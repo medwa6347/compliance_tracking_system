@@ -1,0 +1,254 @@
+Sub SendHttpRequestSilently_CreateFinalDocLink()
+    Dim http As Object
+    Dim url As String
+    Dim docLinkName As String
+    Dim GovOrg As String
+    Dim DocCat As String
+    Dim DocNum As String
+    Dim currentRow As Long
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("Documents")
+    
+    ' Init DocLinkHelper Col
+    ActiveCell.EntireRow.Cells(27).Value = 1
+
+    currentRow = ActiveCell.row
+    DocNum = ActiveCell.EntireRow.Cells(1).Value
+    GovOrg = ActiveCell.EntireRow.Cells(2).Value
+    DocCat = ActiveCell.EntireRow.Cells(4).Value
+        
+    ' Get the value from Excel
+    docLinkName = ActiveCell.EntireRow.Cells(13).Value
+
+    ' Construct the URL
+    flowUrl = "https://8ecf74de56feef718e184f81fe193a.18.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ec4e00a99d8a44f4afc19ef477ecf2e2/triggers/manual/paths/invoke/?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Jbph4b6X6G-HefmuUvSfps5QX5j-ATsjs5auctdi3uk"
+    url = flowUrl & "&DocLinkName=" & URLEncode(docLinkName) & "&DocNum=" & URLEncode(DocNum)
+
+    If IsMac Then
+        Call SendHttpRequest_Mac(url)
+    Else
+        Call SendHttpRequest_Windows(url)
+    End If
+    
+    ' Wait for it...
+    Call ShowSpinner("Creating Final Document Link", 10)
+    
+    ActiveCell.EntireRow.Cells(27).Value = 2
+    ActiveSheet.Calculate
+
+End Sub
+
+Function URLEncode(str As String) As String
+    str = Replace(str, " ", "%20")
+    str = Replace(str, "&", "%26")
+    str = Replace(str, "=", "%3D")
+    URLEncode = str
+End Function
+
+Function IsMac() As Boolean
+    IsMac = (InStr(Application.OperatingSystem, "Macintosh") > 0)
+End Function
+
+Sub SendHttpRequest_Windows(url As String)
+    Dim http As Object
+    Set http = CreateObject("MSXML2.XMLHTTP")
+    http.Open "GET", url, False
+    http.Send
+End Sub
+
+Sub SendHttpRequest_Mac(url As String)
+    Dim script As String
+    script = "do shell script ""curl -s '" & url & "'"""
+    MacScript script
+End Sub
+
+Sub SendHttpRequestSilently_CreatePlan()
+    Dim Response As VbMsgBoxResult
+    Dim http As Object
+    Dim url As String
+    Dim DocNum As String
+    Dim TaskName As String
+    Dim TaskDueDate As Date
+    Dim BucketID As String
+    Dim GovOrg As String
+    Dim DocCat As String
+    Dim ISODateString As String
+    Dim ws As Worksheet
+    Set ws = ThisWorkbook.Sheets("Documents")
+
+    ' Init PPLinkHelper Col
+    ActiveCell.EntireRow.Cells(21).Value = 1
+
+    DocNum = ActiveCell.EntireRow.Cells(1).Value
+    GovOrg = ActiveCell.EntireRow.Cells(2).Value
+    DocCat = ActiveCell.EntireRow.Cells(4).Value
+    BucketID = ActiveCell.EntireRow.Cells(12).Value
+    TaskName = ActiveCell.EntireRow.Cells(18).Value
+    TaskDueDate = ActiveCell.EntireRow.Cells(10).Value
+    
+    If InStr(TaskName, "Please") > 0 Then
+        MsgBox "Unable to create New Project Plan without expected authorizations. Please enter authorizations and try again."
+        GoTo Skip
+    End If
+
+Plan:
+    
+    'Put TaskDueDate in ISO for PA
+    ISODateString = GetISODateString(TaskDueDate)
+        
+    ' Construct the URL
+    flowUrl = "https://8ecf74de56feef718e184f81fe193a.18.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d0d273f35db44e94ad2d1f21cf84b33f/triggers/manual/paths/invoke/?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AetEZn-xQIYLnwt8yuryBIP05TS4oCAdFrFiCwEWMQM"
+    url = flowUrl & "&TaskName=" & URLEncode(TaskName) & "&BucketID=" & URLEncode(BucketID) & "&DocNum=" & URLEncode(DocNum) & "&TaskDueDate=" & URLEncode(ISODateString)
+    
+    If IsMac Then
+        Call SendHttpRequest_Mac(url)
+    Else
+        Call SendHttpRequest_Windows(url)
+    End If
+    
+    Call ShowSpinner("Creating project plan", 10)
+    
+Skip:
+
+    ' Init PPLinkHelper Col
+    ActiveCell.EntireRow.Cells(21).Value = 2
+
+End Sub
+
+Sub CopyAndPasteToNextBlankRow()
+    Dim wsDoc As Worksheet
+    Dim wsAuth As Worksheet
+    Dim currentRow As Long
+    Dim copyRange As Range
+    Dim pasteRow As Long
+    Dim AuthRecVal As String
+    Dim DocNum As String
+    Dim GovOrg As String
+    Dim DocCat As String
+    Dim DocVal As String
+    Dim DocDueDate As String
+           
+    Set wsDoc = ActiveSheet
+    Set wsAuth = Worksheets("Authorizations")
+    currentRow = ActiveCell.row
+
+    ' Copy columns B to I from the current row
+    Set copyRange = wsDoc.Range(wsDoc.Cells(currentRow, 2), wsDoc.Cells(currentRow, 8))
+    ' Copy Doc Number, GovOrg, LicCat, Authorized Recipient value
+    AuthRecVal = wsDoc.Cells(currentRow, 14).Value
+    If AuthRecVal = "W-S" Then AuthRecVal = "Groome"
+    GovOrg = wsDoc.Cells(currentRow, 2).Value
+    DocCat = wsDoc.Cells(currentRow, 4).Value
+    DocVal = GovOrg & " - " & DocCat
+    DocDueDate = wsDoc.Cells(currentRow, 10).Value
+    
+    ' Find the next blank row in column B using COUNTA, Documents
+    pasteRow = Application.WorksheetFunction.CountA(wsDoc.Range("B:B")) + 1
+    DocNum = wsDoc.Cells(pasteRow, 1).Value
+
+    ' Paste the copied values into the identified row
+    wsDoc.Range(wsDoc.Cells(pasteRow, 2), wsDoc.Cells(pasteRow, 8)).Value = copyRange.Value
+    ' Set Status to In Progress
+    wsDoc.Cells(pasteRow, 9).Value = "In Progress"
+    wsDoc.Cells(pasteRow, 10).Value = DocDueDate
+    
+    ' Find the next blank row in column B using COUNTA, Athorizations
+    pasteRowAuth = Application.WorksheetFunction.CountA(wsAuth.Range("B:B")) + 1
+    
+    'Paste the copied values into the identified row
+    wsAuth.Cells(pasteRowAuth, 1).Value = DocVal
+    wsAuth.Cells(pasteRowAuth, 2).Value = DocNum
+    wsAuth.Cells(pasteRowAuth, 3).Value = 1
+    wsAuth.Cells(pasteRowAuth, 5).Value = DocCat
+    If InStr(AuthRecVal, "Groome") + InStr(AuthRecVal, "W-S") = 0 Then
+        wsAuth.Cells(pasteRowAuth, 6).Value = "Individual"
+    Else: wsAuth.Cells(pasteRowAuth, 6).Value = "Company"
+    End If
+    wsAuth.Cells(pasteRowAuth, 7).Value = AuthRecVal
+    
+    'Take me there
+    Cells(pasteRow, 1).Select
+    
+End Sub
+
+Sub ShowSpinner(message As String, durationSeconds As Integer)
+    Dim startTime As Single
+    Dim spinnerText As String
+    Dim i As Integer
+
+    startTime = Timer
+    i = 0
+
+    Do While Timer < startTime + durationSeconds
+        Select Case i Mod 3
+            Case 0: spinnerText = message & "."
+            Case 1: spinnerText = message & ".."
+            Case 2: spinnerText = message & "..."
+        End Select
+
+        Application.StatusBar = spinnerText
+        DoEvents
+        Application.Wait Now + TimeValue("0:00:01")
+        i = i + 1
+    Loop
+
+    Application.StatusBar = False ' Reset status bar
+End Sub
+
+Function GetISODateString(ByVal inputDate As Date) As String
+    ' Converts a VBA date to ISO 8601 format for Power Automate
+    GetISODateString = Format(inputDate, "yyyy-mm-dd") & "T" & Format(inputDate, "hh:mm:ss") & "Z"
+End Function
+
+Sub ResetHelperCols()
+Dim ws As Worksheet
+    Dim i As Long
+
+    Set ws = ThisWorkbook.Sheets("Documents")
+    For i = 2 To 1000
+        ws.Cells(i, 21).Value = 0 ' Project Plan Link Helper Col
+        ws.Cells(i, 27).Value = 0 ' Document Link Helper Col
+    Next i
+End Sub
+
+Sub ExportTablesToCSV()
+    Dim tbl As ListObject
+    Dim ws As Worksheet
+    Dim filePath As String
+    Dim tableName As String
+    Dim csvPath As String
+    
+    ' Get the path of the workbook
+    filePath = ThisWorkbook.Path
+    If filePath = "" Then
+        MsgBox "Please save the workbook first to determine its location.", vbExclamation
+        Exit Sub
+    End If
+    
+    ' Loop through each worksheet and each table
+    For Each ws In ThisWorkbook.Worksheets
+        For Each tbl In ws.ListObjects
+            tableName = tbl.Name
+            csvPath = filePath & "\" & tableName & ".csv"
+            
+            ' Export the table to CSV
+            ExportTableToCSV tbl, csvPath
+        Next tbl
+    Next ws
+    
+    MsgBox "All tables have been exported to CSV files in: " & filePath, vbInformation
+End Sub
+
+
+
+
+
+
+
+
+
+
+
+
+
+
