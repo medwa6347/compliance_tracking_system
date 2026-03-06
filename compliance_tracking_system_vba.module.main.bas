@@ -1,3 +1,4 @@
+Attribute VB_Name = "main"
 Sub SendHttpRequestSilently_CreateFinalDocLink()
     Dim http As Object
     Dim url As String
