@@ -22,7 +22,7 @@ Sub SendHttpRequestSilently_CreateFinalDocLink()
     docLinkName = ActiveCell.EntireRow.Cells(13).Value
 
     ' Construct the URL
-    flowUrl = "https://8ecf74de56feef718e184f81fe193a.18.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/ec4e00a99d8a44f4afc19ef477ecf2e2/triggers/manual/paths/invoke/?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=Jbph4b6X6G-HefmuUvSfps5QX5j-ATsjs5auctdi3uk"
+    flowUrl = ""
     url = flowUrl & "&DocLinkName=" & URLEncode(docLinkName) & "&DocNum=" & URLEncode(DocNum)
 
     If IsMac Then
@@ -98,7 +98,7 @@ Plan:
     ISODateString = GetISODateString(TaskDueDate)
         
     ' Construct the URL
-    flowUrl = "https://8ecf74de56feef718e184f81fe193a.18.environment.api.powerplatform.com:443/powerautomate/automations/direct/workflows/d0d273f35db44e94ad2d1f21cf84b33f/triggers/manual/paths/invoke/?api-version=1&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=AetEZn-xQIYLnwt8yuryBIP05TS4oCAdFrFiCwEWMQM"
+    flowUrl = ""
     url = flowUrl & "&TaskName=" & URLEncode(TaskName) & "&BucketID=" & URLEncode(BucketID) & "&DocNum=" & URLEncode(DocNum) & "&TaskDueDate=" & URLEncode(ISODateString)
     
     If IsMac Then
